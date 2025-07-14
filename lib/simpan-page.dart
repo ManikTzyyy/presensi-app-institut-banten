@@ -139,7 +139,7 @@ class _SimpanPageState extends State<SimpanPage> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
                       child: SizedBox(
-                        height: 280,
+                        height: 280, 
                         child: SfMaps(
                           layers: [
                             MapTileLayer(
