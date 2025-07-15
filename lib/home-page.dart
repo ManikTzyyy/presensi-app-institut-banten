@@ -1,11 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as myHttp;
 import 'package:aplikasi_presensi/models/home-response.dart';
 import 'package:aplikasi_presensi/simpan-page.dart';
+import 'package:aplikasi_presensi/login-page.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,10 +22,9 @@ class _HomePageState extends State<HomePage> {
   HomeResponseModel? homeResponseModel;
   Datum? hariIni;
   List<Datum> riwayat = [];
-
-  String pegawaiFoto = 'assets/avatar.jpg';
   String pegawaiJabatan = "Saya Software Engineering";
-  
+  File? _customImage;
+
   @override
   void initState() {
     super.initState();
@@ -33,14 +35,18 @@ class _HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString("token");
     _name = prefs.getString("name");
+    final imagePath = prefs.getString('customImagePath');
+    if (imagePath != null) {
+      _customImage = File(imagePath);
+    }
     await _getData();
     setState(() {});
   }
-  
+
   Future<void> _getData() async {
     try {
       final response = await myHttp.get(
-        Uri.parse('http://127.0.0.1:8000/api/get-presensi'),
+        Uri.parse('https://azure-stingray-527018.hostingersite.com/api/get-presensi'),
         headers: {'Authorization': 'Bearer ${_token ?? ""}'},
       );
       if (response.statusCode == 200) {
@@ -51,10 +57,32 @@ class _HomePageState extends State<HomePage> {
           item.isHariIni ? hariIni = item : riwayat.add(item);
         }
       } else {
-        throw Exception('Failed to load data');
+        throw Exception('Gagal memuat data');
       }
     } catch (e) {
       print('Error: $e');
+    }
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('customImagePath', pickedFile.path);
+      setState(() {
+        _customImage = File(pickedFile.path);
+      });
     }
   }
 
@@ -71,6 +99,28 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 1,
         foregroundColor: Colors.black87,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Logout'),
+                  content: const Text('Yakin ingin keluar dari aplikasi?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                    ElevatedButton(onPressed: () {
+                      Navigator.pop(context);
+                      _logout();
+                    }, child: const Text('Logout')),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<String>(
         future: getName(),
@@ -115,33 +165,42 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProfil() => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black12, blurRadius: 10, offset: const Offset(0, 4))
-          ],
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(radius: 38, backgroundImage: AssetImage(pegawaiFoto)),
-            const SizedBox(width: 18),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_name ?? "Nama Pegawai",
-                    style: GoogleFonts.poppins(
-                        fontSize: 18, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                Text(pegawaiJabatan,
-                    style: GoogleFonts.poppins(
-                        fontSize: 14, color: Colors.grey[700])),
-              ],
-            )
-          ],
+  Widget _buildProfil() => InkWell(
+        onTap: _pickImage,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black12, blurRadius: 10, offset: const Offset(0, 4))
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 38,
+                backgroundImage: _customImage != null
+                    ? FileImage(_customImage!)
+                    : const AssetImage('assets/avatar.jpg') as ImageProvider,
+              ),
+              const SizedBox(width: 18),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_name ?? "Nama Pegawai",
+                      style: GoogleFonts.poppins(
+                          fontSize: 18, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Text(pegawaiJabatan,
+                      style: GoogleFonts.poppins(
+                          fontSize: 14, color: Colors.grey[700])),
+                ],
+              )
+            ],
+          ),
         ),
       );
 

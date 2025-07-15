@@ -51,7 +51,7 @@ class _SimpanPageState extends State<SimpanPage> {
 
     try {
       final response = await myHttp.post(
-        Uri.parse('http://127.0.0.1:8000/api/save-presensi'),
+        Uri.parse('https://azure-stingray-527018.hostingersite.com/api/save-presensi'),
         headers: headers,
         body: body,
       );

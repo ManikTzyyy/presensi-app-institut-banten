@@ -1,9 +1,10 @@
 import 'dart:convert';
-import 'package:aplikasi_presensi/home-page.dart';
-import 'package:aplikasi_presensi/models/login-response.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as myHttp;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:aplikasi_presensi/home-page.dart';
+import 'package:aplikasi_presensi/register-page.dart';
+import 'package:aplikasi_presensi/models/login-response.dart';
+import 'package:http/http.dart' as myHttp;
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginPage extends StatefulWidget {
@@ -45,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
     Map<String, String> body = {"email": email, "password": password};
     var response = await myHttp.post(
-      Uri.parse('http://127.0.0.1:8000/api/login'),
+      Uri.parse('https://azure-stingray-527018.hostingersite.com/api/login'),
       body: body,
     );
     setState(() => isLoading = false);
@@ -239,6 +240,32 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Belum punya akun?",
+                          style: GoogleFonts.poppins(fontSize: 13),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RegisterPage()),
+                            );
+                          },
+                          child: Text(
+                            "Daftar",
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blueAccent,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
