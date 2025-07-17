@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:aplikasi_presensi/home-page.dart';
 import 'package:aplikasi_presensi/login-page.dart';
 import 'package:aplikasi_presensi/simpan-page.dart';
+import 'package:aplikasi_presensi/register-page.dart';
+import 'package:aplikasi_presensi/logout-home-page.dart';
 
 void main() {
   runApp(const MyApp());

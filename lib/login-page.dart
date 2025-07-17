@@ -18,59 +18,71 @@ class _LoginPageState extends State<LoginPage> {
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  late Future<String> _name, _token;
   bool isLoading = false;
   bool obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
-    _token = _prefs.then((prefs) => prefs.getString("token") ?? "");
-    _name = _prefs.then((prefs) => prefs.getString("name") ?? "");
-    checkToken(_token, _name);
+    checkToken();
   }
 
-  checkToken(Future<String> token, Future<String> name) async {
-    String tokenStr = await token;
-    String nameStr = await name;
-    if (tokenStr.isNotEmpty && nameStr.isNotEmpty) {
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomePage()),
-        );
-      });
+  // Mengecek apakah token sudah disimpan, jika ada langsung masuk ke HomePage
+  void checkToken() async {
+    final prefs = await _prefs;
+    String? token = prefs.getString("token");
+    String? name = prefs.getString("name");
+    if (token != null && token.isNotEmpty && name != null && name.isNotEmpty) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
     }
   }
 
-  Future Login(String email, String password) async {
+  // Fungsi login
+  Future<void> login(String email, String password) async {
     setState(() => isLoading = true);
-    Map<String, String> body = {"email": email, "password": password};
+
     var response = await myHttp.post(
       Uri.parse('https://azure-stingray-527018.hostingersite.com/api/login'),
-      body: body,
+      body: {
+        "email": email,
+        "password": password,
+      },
     );
+
     setState(() => isLoading = false);
 
-    if (response.statusCode == 401) {
+    if (response.statusCode == 200) {
+      final responseJson = json.decode(response.body);
+      if (responseJson["success"] == true) {
+        final loginResponse = LoginResponseModel.fromJson(responseJson);
+        await saveUser(loginResponse.data.token, loginResponse.data.name);
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(responseJson["message"] ?? "Login gagal")),
+        );
+      }
+    } else if (response.statusCode == 401) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email atau password salah")),
       );
     } else {
-      final responseJson = json.decode(response.body);
-      if (responseJson != null) {
-        final loginResponseModel = LoginResponseModel.fromJson(responseJson);
-        saveUser(loginResponseModel.data.token, loginResponseModel.data.name);
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Terjadi kesalahan, coba lagi nanti")),
+      );
     }
   }
 
-  Future saveUser(String token, String name) async {
-    final SharedPreferences pref = await _prefs;
-    pref.setString("name", name);
-    pref.setString("token", token);
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
+  // Menyimpan token dan nama ke SharedPreferences
+  Future<void> saveUser(String token, String name) async {
+    final prefs = await _prefs;
+    await prefs.setString("token", token);
+    await prefs.setString("name", name);
   }
 
   @override
@@ -84,27 +96,7 @@ class _LoginPageState extends State<LoginPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 40),
-              Container(
-                height: 140,
-                width: 140,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Image.asset(
-                    'assets/presensi.jpg',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
+              Image.asset('assets/presensi.jpg', height: 140, width: 140),
               const SizedBox(height: 24),
               Text(
                 "Presensi App - IB",
@@ -115,122 +107,53 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                "Selamat Datang 👋",
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "Masuk ke akun Anda",
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 32),
+              Text("Masuk ke akun Anda", style: GoogleFonts.poppins(fontSize: 14)),
+              const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12.withOpacity(0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
+                    BoxShadow(color: Colors.black12.withOpacity(0.08), blurRadius: 20),
                   ],
                 ),
                 child: Column(
                   children: [
                     TextFormField(
                       controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      style: GoogleFonts.poppins(),
-                      decoration: InputDecoration(
-                        hintText: "Email",
-                        prefixIcon: const Icon(Icons.mail_outline),
-                        filled: true,
-                        fillColor: const Color(0xFFF9FAFB),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
+                      decoration: const InputDecoration(
+                        labelText: "Email",
+                        prefixIcon: Icon(Icons.mail_outline),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: passwordController,
                       obscureText: obscurePassword,
-                      style: GoogleFonts.poppins(),
                       decoration: InputDecoration(
-                        hintText: "Password",
+                        labelText: "Password",
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(
-                            obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              obscurePassword = !obscurePassword;
-                            });
-                          },
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFFF9FAFB),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                          icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => obscurePassword = !obscurePassword),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {},
-                        child: Text(
-                          "Lupa password?",
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: Colors.blueAccent,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: isLoading
                             ? null
-                            : () {
-                                Login(emailController.text, passwordController.text);
-                              },
+                            : () => login(emailController.text.trim(), passwordController.text.trim()),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           backgroundColor: Colors.blueAccent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 3,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
+                            ? const CircularProgressIndicator(color: Colors.white)
                             : Text(
                                 "Masuk",
                                 style: GoogleFonts.poppins(
@@ -242,42 +165,22 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Belum punya akun?",
-                          style: GoogleFonts.poppins(fontSize: 13),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage()));
+                      },
+                      child: Text(
+                        "Belum punya akun? Daftar",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blueAccent,
                         ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const RegisterPage()),
-                            );
-                          },
-                          child: Text(
-                            "Daftar",
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.blueAccent,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    )
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                "© 2025 Aplikasi Presensi",
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: Colors.grey[500],
-                ),
-              ),
+              )
             ],
           ),
         ),

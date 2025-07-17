@@ -20,34 +20,57 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> register(String name, String email, String password) async {
     setState(() => isLoading = true);
-    Map<String, String> body = {
-      "name": name,
-      "email": email,
-      "password": password
-    };
 
-    final response = await myHttp.post(
-      Uri.parse('https://azure-stingray-527018.hostingersite.com/api/register'),
-      body: body,
-    );
+    try {
+      final response = await myHttp.post(
+        Uri.parse('https://azure-stingray-527018.hostingersite.com/api/register'),
+        headers: {
+          "Accept": "application/json", // wajib agar Laravel tidak balas HTML saat error
+        },
+        body: {
+          "name": name,
+          "email": email,
+          "password": password,
+        },
+      );
 
-    setState(() => isLoading = false);
+      debugPrint('Register status: ${response.statusCode}');
+      debugPrint('Register body: ${response.body}');
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registrasi berhasil, silakan login.")),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      } else {
+        final resBody = json.decode(response.body);
+
+        // Tangani jika error dari Laravel berupa validasi (kode 422)
+        if (response.statusCode == 422 && resBody['errors'] != null) {
+          final errors = resBody['errors'];
+          final firstError = errors.entries.first.value[0];
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(firstError)));
+        } else {
+          String message = resBody['message'] ?? 'Terjadi kesalahan saat registrasi.';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        }
+      }
+    } catch (e) {
+      debugPrint('Register error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Registrasi berhasil, silakan login.")),
+        SnackBar(content: Text("Terjadi kesalahan: $e")),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
-    } else {
-      final resBody = json.decode(response.body);
-      String message = resBody['message'] ?? 'Terjadi kesalahan saat registrasi.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
+  }
+
+  bool isEmailValid(String email) {
+    final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+    return regex.hasMatch(email);
   }
 
   @override
@@ -67,7 +90,10 @@ class _RegisterPageState extends State<RegisterPage> {
             Text(
               "Buat Akun Baru",
               style: GoogleFonts.poppins(
-                  fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueAccent,
+              ),
             ),
             const SizedBox(height: 24),
             TextField(
@@ -77,7 +103,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 prefixIcon: const Icon(Icons.person_outline),
                 filled: true,
                 fillColor: const Color(0xFFF9FAFB),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -89,7 +118,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 prefixIcon: const Icon(Icons.mail_outline),
                 filled: true,
                 fillColor: const Color(0xFFF9FAFB),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -100,14 +132,21 @@ class _RegisterPageState extends State<RegisterPage> {
                 labelText: "Password",
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
+                  icon: Icon(
+                    obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  ),
                   onPressed: () {
-                    setState(() => obscurePassword = !obscurePassword);
+                    setState(() {
+                      obscurePassword = !obscurePassword;
+                    });
                   },
                 ),
                 filled: true,
                 fillColor: const Color(0xFFF9FAFB),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -120,9 +159,14 @@ class _RegisterPageState extends State<RegisterPage> {
                         final name = nameController.text.trim();
                         final email = emailController.text.trim();
                         final password = passwordController.text.trim();
+
                         if (name.isEmpty || email.isEmpty || password.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text("Semua field wajib diisi.")),
+                          );
+                        } else if (!isEmailValid(email)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Format email tidak valid.")),
                           );
                         } else {
                           register(name, email, password);
@@ -131,7 +175,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   backgroundColor: Colors.blueAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 3,
                 ),
                 child: isLoading
@@ -165,12 +211,14 @@ class _RegisterPageState extends State<RegisterPage> {
                       MaterialPageRoute(builder: (_) => const LoginPage()),
                     );
                   },
-                  child: Text("Masuk",
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blueAccent,
-                      )),
+                  child: Text(
+                    "Masuk",
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blueAccent,
+                    ),
+                  ),
                 ),
               ],
             )
