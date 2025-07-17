@@ -19,58 +19,69 @@ class _RegisterPageState extends State<RegisterPage> {
   bool obscurePassword = true;
 
   Future<void> register(String name, String email, String password) async {
-    setState(() => isLoading = true);
+  setState(() => isLoading = true);
 
-    try {
-      final response = await myHttp.post(
-        Uri.parse('https://azure-stingray-527018.hostingersite.com/api/register'),
-        headers: {
-          "Accept": "application/json", // wajib agar Laravel tidak balas HTML saat error
-        },
-        body: {
-          "name": name,
-          "email": email,
-          "password": password,
-        },
-      );
+  try {
+    final response = await myHttp.post(
+      Uri.parse('https://azure-stingray-527018.hostingersite.com/api/register'),
+      headers: {
+        "Accept": "application/json", // Penting agar Laravel merespon JSON, bukan HTML
+      },
+      body: {
+        "name": name,
+        "email": email,
+        "password": password,
+      },
+    );
 
-      debugPrint('Register status: ${response.statusCode}');
-      debugPrint('Register body: ${response.body}');
+    debugPrint('Register status: ${response.statusCode}');
+    debugPrint('Register body: ${response.body}');
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registrasi berhasil, silakan login.")),
-        );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-        );
-      } else {
-        final resBody = json.decode(response.body);
+    final resBody = json.decode(response.body);
 
-        // Tangani jika error dari Laravel berupa validasi (kode 422)
-        if (response.statusCode == 422 && resBody['errors'] != null) {
-          final errors = resBody['errors'];
-          final firstError = errors.entries.first.value[0];
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(firstError)));
-        } else {
-          String message = resBody['message'] ?? 'Terjadi kesalahan saat registrasi.';
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-        }
-      }
-    } catch (e) {
-      debugPrint('Register error: $e');
+    if (response.statusCode == 200 || response.statusCode == 201) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Terjadi kesalahan: $e")),
+        const SnackBar(content: Text("Registrasi berhasil, silakan login.")),
       );
-    } finally {
-      if (mounted) setState(() => isLoading = false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      return;
     }
+
+    // Penanganan validasi (HTTP 422) dari Laravel
+    if (response.statusCode == 422 && resBody['errors'] != null) {
+      final errors = resBody['errors'];
+      final firstError = errors.entries.first.value[0];
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(firstError)),
+      );
+    } else {
+      final message = resBody['message'] ?? 'Terjadi kesalahan saat registrasi.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+
+  } catch (e) {
+    debugPrint('Register exception: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Terjadi kesalahan: $e")),
+    );
+  } finally {
+    if (mounted) setState(() => isLoading = false);
   }
+}
 
   bool isEmailValid(String email) {
     final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     return regex.hasMatch(email);
+  }
+
+  bool isPasswordValid(String password){
+    if(password.length < 3) return false;
+    return true;
   }
 
   @override
@@ -168,7 +179,13 @@ class _RegisterPageState extends State<RegisterPage> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text("Format email tidak valid.")),
                           );
-                        } else {
+                        } else if(!isPasswordValid(password)){
+                           ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Password Terlalu Pendek")),
+                          );
+                        }
+                        
+                         else {
                           register(name, email, password);
                         }
                       },
