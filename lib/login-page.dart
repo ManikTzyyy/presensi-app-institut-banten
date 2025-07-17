@@ -27,7 +27,6 @@ class _LoginPageState extends State<LoginPage> {
     checkToken();
   }
 
-  // Mengecek apakah token sudah disimpan, jika ada langsung masuk ke HomePage
   void checkToken() async {
     final prefs = await _prefs;
     String? token = prefs.getString("token");
@@ -39,7 +38,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Fungsi login
   Future<void> login(String email, String password) async {
     setState(() => isLoading = true);
 
@@ -78,7 +76,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Menyimpan token dan nama ke SharedPreferences
   Future<void> saveUser(String token, String name) async {
     final prefs = await _prefs;
     await prefs.setString("token", token);
@@ -96,7 +93,37 @@ class _LoginPageState extends State<LoginPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 40),
-              Image.asset('assets/presensi.jpg', height: 140, width: 140),
+
+              // Tampilan logo modern dan elegan
+              Container(
+                height: 140,
+                width: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3A7BD5), Color(0xFF00D2FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(6.0),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/presensi.jpg',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 24),
               Text(
                 "Presensi App - IB",
